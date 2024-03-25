@@ -3,15 +3,18 @@ package flage
 import (
 	"encoding"
 	"flag"
+	"fmt"
 	"math/big"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
 
 type ExampleMarshal struct {
 	T time.Time
-	N big.Int
+	N big.Int `flage:",1"`
 }
 
 func (e *ExampleMarshal) MarshalFlagField(name string) encoding.TextMarshaler {
@@ -19,7 +22,8 @@ func (e *ExampleMarshal) MarshalFlagField(name string) encoding.TextMarshaler {
 	case "T":
 		return time.Now().UTC().Truncate(0)
 	case "N":
-		return big.NewInt(1)
+		return nil
+		// return big.NewInt(1)
 	default:
 		panic("unreachable")
 	}
@@ -164,5 +168,137 @@ func TestStructVarParsingWithDefaults(t *testing.T) {
 
 	if !reflect.DeepEqual(expected, example) {
 		t.Errorf("expected %#v, got %#v", expected, example)
+	}
+}
+
+type TypeWithTextMarshals struct{ X int }
+
+func (t TypeWithTextMarshals) MarshalText() (text []byte, err error) {
+	return []byte(fmt.Sprintf("%d", t.X)), nil
+}
+func (t *TypeWithTextMarshals) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 64)
+	if err == nil {
+		t.X = int(v)
+	}
+	return err
+}
+
+type TypeWithNoImplementations struct{ X int }
+
+type TypeWithNoTextMarshal struct{ X int }
+
+func (t *TypeWithNoTextUnmarshal) UnmarshalText(text []byte) error {
+	v, err := strconv.ParseInt(string(text), 10, 64)
+	if err == nil {
+		t.X = int(v)
+	}
+	return err
+}
+
+type TypeWithNoTextUnmarshal struct{ X int }
+
+func (t TypeWithNoTextUnmarshal) MarshalText() (text []byte, err error) {
+	return []byte(fmt.Sprintf("%d", t.X)), nil
+}
+
+type ExampleReturningFieldTypeMarshal struct {
+	X       TypeWithNoTextUnmarshal
+	returns encoding.TextMarshaler
+}
+
+func (e *ExampleReturningFieldTypeMarshal) MarshalFieldFlag(name string) encoding.TextMarshaler {
+	return e.returns
+}
+
+func TestStructVarWithTextMarshaler(t *testing.T) {
+	t.Run("works with default values", func(t *testing.T) {
+		// defer expectPanic(t, "")
+		type Example struct {
+			A TypeWithTextMarshals `flage:"A,1"`
+		}
+		var example Example
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+	t.Run("panics when custom type is missing methods", func(t *testing.T) {
+		defer expectPanic(t, "Example.A has an unsupported type: ")
+		type Example struct {
+			A TypeWithNoImplementations
+		}
+		var example Example
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+	t.Run("panics when UnmarshalText is missing", func(t *testing.T) {
+		defer expectPanic(t, "Example.A must have a default value set.")
+		type Example struct {
+			A TypeWithNoTextUnmarshal
+		}
+		var example Example
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+	t.Run("panics when MarshalText is missing", func(t *testing.T) {
+		defer expectPanic(t, "")
+		type Example struct {
+			A TypeWithNoTextMarshal
+		}
+		var example Example
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+	t.Run("panics when FieldTextMarshaler returns nil", func(t *testing.T) {
+		defer expectPanic(t, "ExampleReturningFieldTypeMarshal.X must have a default value set.")
+		var example ExampleReturningFieldTypeMarshal
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+	t.Run("panics when TextMarshaler has no default value", func(t *testing.T) {
+		defer expectPanic(t, "Example.A must have a default value set.")
+		type Example struct {
+			A TypeWithTextMarshals
+		}
+		var example Example
+		fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+		err := fs.Parse([]string{})
+		if err != nil {
+			t.Errorf("failed to parse flags: %s", err.Error())
+		}
+	})
+}
+
+func expectPanic(t *testing.T, msg string) {
+	err := recover()
+	if err == nil {
+		t.Error("expected panic")
+	} else if msg != "" {
+		actual := ""
+		switch err := err.(type) {
+		case error:
+			actual = err.Error()
+		case string:
+			actual = err
+		default:
+			t.Errorf("unknown panic value: %#v", err)
+		}
+		if !strings.Contains(actual, msg) {
+			t.Errorf("expected panic to contain text %q, but got %q", msg, actual)
+		}
 	}
 }

@@ -117,7 +117,10 @@ func StructVar(v any, fs FlagSet) {
 	}
 
 	rv := reflect.ValueOf(v)
-	t := rv.Elem().Type()
+	for rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+	t := rv.Type()
 	if t.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("expected value to be a struct pointer, got: %s", t.Kind().String()))
 	}
@@ -162,17 +165,54 @@ func StructVar(v any, fs FlagSet) {
 			continue
 		}
 
-		rstruct := rv.Elem()
-		ptr := rstruct.Field(i).Addr().Interface()
+		ptr := rv.Field(i).Addr().Interface()
 		if pt, ok := ptr.(flag.Value); ok {
 			fs.Var(pt, name, docstring)
 		} else if pt, ok := ptr.(encoding.TextUnmarshaler); ok {
-			provider := v.(FieldTextMarshaler)
-			defaultValue := provider.MarshalFlagField(f.Name)
-			if v == nil {
-				panic(fmt.Sprintf("requires default value for field from MarshalFlagField method: %s", f.Name))
+			if provider, ok := v.(FieldTextMarshaler); ok {
+				defaultMarshalValue := provider.MarshalFlagField(f.Name)
+				if defaultMarshalValue != nil {
+					fs.TextVar(pt, name, defaultMarshalValue, docstring)
+				} else {
+					if defaultValue != "" {
+						if um, ok := ptr.(encoding.TextMarshaler); ok {
+							err := pt.UnmarshalText([]byte(defaultValue))
+							if err != nil {
+								panic(fmt.Errorf("error parsing default value on field %s.%s: %w", t.Name(), f.Name, err))
+							}
+							fs.TextVar(pt, name, um, docstring)
+						} else {
+							panic(fmt.Sprintf("%s.%s must have a type that implements encoding.TextMarshaler (in addition to encoding.TextUnmarshaler)", t.Name(), f.Name))
+						}
+					} else {
+						panic(fmt.Sprintf(
+							"%s.%s needs an explicitly defined default value. %s.MarshalFlagField method must return a non-nil encoding.TextMarshaler value",
+							t.Name(),
+							f.Name,
+							t.Name(),
+						))
+					}
+				}
+			} else {
+				if defaultValue != "" {
+					if um, ok := ptr.(encoding.TextMarshaler); ok {
+						err := pt.UnmarshalText([]byte(defaultValue))
+						if err != nil {
+							panic(fmt.Errorf("error parsing default value on field %q: %w", f.Name, err))
+						}
+						fs.TextVar(pt, name, um, docstring)
+					} else {
+						panic(fmt.Sprintf("%s must have a type that implements encoding.TextMarshaler", f.Name))
+					}
+				} else {
+					panic(fmt.Sprintf(
+						"%s.%s must have a default value set. Implement %s.MarshalFlagField method or implement encoding.TextMarshaler with a default value in flage tag",
+						t.Name(),
+						f.Name,
+						t.Name(),
+					))
+				}
 			}
-			fs.TextVar(pt, name, defaultValue, docstring)
 		} else {
 			switch f.Type.Kind() {
 			case reflect.Bool:
@@ -251,7 +291,7 @@ func StructVar(v any, fs FlagSet) {
 				}
 				fs.Float64Var(ptr.(*float64), name, v, docstring)
 			default:
-				panic(fmt.Errorf("%q: unsupported field type: %s", f.Name, f.Type.Kind().String()))
+				panic(fmt.Errorf("%s.%s has an unsupported type: %s", t.Name(), f.Name, f.Type.String()))
 			}
 		}
 	}
