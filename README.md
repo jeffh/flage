@@ -15,8 +15,8 @@ go get github.com/jeffh/flage
 Structs
 -------
 
-This package can use a struct for easy parsing using go's flag package. Supported types are any
-builtin types or any type that supports the `flag.Value` interface.
+This package can use a struct for easy parsing using go's flag package. Supported types supported
+by the `flag` package or any type that supports the `flag.Value` interface.
 
 ```go
 type Example struct {
