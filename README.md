@@ -1,6 +1,8 @@
 flage
 ======
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/jeffh/flage.svg)](https://pkg.go.dev/github.com/jeffh/flage)
+
 Extensions to go's built-in flag parsing. For when you want a little bit more, but not too much.
 
 Install
