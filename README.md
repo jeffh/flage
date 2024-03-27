@@ -15,8 +15,13 @@ go get github.com/jeffh/flage
 Structs
 -------
 
-This package can use a struct for easy parsing using go's flag package. Supported types supported
-by the `flag` package or any type that supports the `flag.Value` interface.
+This package can use a struct for easy parsing using go's flag package. Supported types are:
+
+ - types supported by the `flag` package
+ - any type that supports the `flag.Value` interface
+ - any type that supports `encoding.TextMarshal` and `encoding.TextUnmarshal` interfaces
+
+Example:
 
 ```go
 type Example struct {
@@ -30,7 +35,7 @@ type Example struct {
     D    time.Duration
 }
 var opt Example
-StructVar(&opt, nil)
+StructVar(&opt, nil) // this nil can be an optional flagset, otherwise, assumes the global flag
 flag.Parse()
 // opt will be populated
 ```
@@ -53,6 +58,7 @@ DefaultValue = default value, parsed as if it was an argument flag. Causes panic
 DocString = docstring for when -help is used. Commas are accepted.
 ```
 
+Finally, you can use structs to create flagsets via `FlagSetStruct`.
 
 
 Slices
@@ -88,3 +94,64 @@ The following slices are supported:
 
 These slices also support calling `Reset` on them to clear those slices, which can be useful
 if you're reusing them in flagsets.
+
+Config Files
+------------
+
+This feature is WIP and subject to change.
+
+Sometimes using a bunch of flags is laborious and it would be nice to save to a
+file. flage provides some helpers to do this:
+
+```go
+type Example struct {
+    Config string
+
+    Bool bool
+    Str  string
+    U    uint
+    U64  uint64
+    I    int
+    I64  int64
+    F64  float64
+    D    time.Duration
+}
+var opt Example
+StructVar(&opt, nil)
+flag.Parse()
+
+if opt.Config != "" {
+    err := flage.ParseConfigFile(opt.Config)
+    if err != nil {
+        // ...
+    }
+}
+// opt will be populated
+```
+
+The above code will allow `-config <file>` to point to a file that looks like:
+
+```txt
+# this is a comment and is ignored, # must be at the start of the line (ignoring only whitesepace)
+-bool
+-str "str"
+-u 1 -u64 2
+```
+
+This is the same as passing in arguments to the command line argument (except
+for `-config`) with a couple of differences:
+
+ - `#` are single lined comments
+ - Newlines are converted to spaces
+ - Some template variables and functions are available a la go's text/template syntax
+
+
+This is templated the following template context is available:
+
+ - `{{.configDir}}` points to the directory that holds the config file specified via `-config <file>`
+ - `{{env "MY_ENV_VAR"}}` returns the value of reading the environment variable `MY_ENV_VAR`
+ - `{{envOr "MY_ENV_VAR" "DEFAULT"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns `"DEFAULT"` if not present
+ - `{{envOrError "MY_ENV_VAR" "my error message"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns an error with `"my error message"` included
+
+More may be added. You can define your own set by using
+`TemplateConfigRenderer`, which the config functions wrap.

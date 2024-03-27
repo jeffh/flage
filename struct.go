@@ -16,56 +16,6 @@ type FieldTextMarshaler interface {
 	MarshalFlagField(field string) encoding.TextMarshaler
 }
 
-// FlagSet is an interface of what Flag setting functions use.
-type FlagSet interface {
-	BoolVar(ptr *bool, name string, defaultValue bool, description string)
-	StringVar(ptr *string, name string, defaultValue string, description string)
-	IntVar(ptr *int, name string, defaultValue int, description string)
-	DurationVar(ptr *time.Duration, name string, defaultValue time.Duration, description string)
-	Int64Var(ptr *int64, name string, defaultValue int64, description string)
-	UintVar(ptr *uint, name string, defaultValue uint, description string)
-	Uint64Var(ptr *uint64, name string, defaultValue uint64, description string)
-	Float64Var(ptr *float64, name string, defaultValue float64, description string)
-	TextVar(p encoding.TextUnmarshaler, name string, value encoding.TextMarshaler, usage string)
-	Var(ptr flag.Value, name string, description string)
-}
-
-// FlagModule provides a FlagSet interface to golang's flag module
-var FlagModule FlagSet = &flagModule{}
-
-type flagModule struct{}
-
-func (f *flagModule) BoolVar(ptr *bool, name string, defaultValue bool, description string) {
-	flag.BoolVar(ptr, name, defaultValue, description)
-}
-func (f *flagModule) StringVar(ptr *string, name string, defaultValue string, description string) {
-	flag.StringVar(ptr, name, defaultValue, description)
-}
-func (f *flagModule) IntVar(ptr *int, name string, defaultValue int, description string) {
-	flag.IntVar(ptr, name, defaultValue, description)
-}
-func (f *flagModule) DurationVar(ptr *time.Duration, name string, defaultValue time.Duration, description string) {
-	flag.DurationVar(ptr, name, defaultValue, description)
-}
-func (f *flagModule) Int64Var(ptr *int64, name string, defaultValue int64, description string) {
-	flag.Int64Var(ptr, name, defaultValue, description)
-}
-func (f *flagModule) UintVar(ptr *uint, name string, defaultValue uint, description string) {
-	flag.UintVar(ptr, name, defaultValue, description)
-}
-func (f *flagModule) Uint64Var(ptr *uint64, name string, defaultValue uint64, description string) {
-	flag.Uint64Var(ptr, name, defaultValue, description)
-}
-func (f *flagModule) Float64Var(ptr *float64, name string, defaultValue float64, description string) {
-	flag.Float64Var(ptr, name, defaultValue, description)
-}
-func (f *flagModule) TextVar(p encoding.TextUnmarshaler, name string, value encoding.TextMarshaler, usage string) {
-	flag.TextVar(p, name, value, usage)
-}
-func (f *flagModule) Var(ptr flag.Value, name string, description string) {
-	flag.Var(ptr, name, description)
-}
-
 // FlagSetStruct makes a new flagset based on an output string to set to
 func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, errHandling)
@@ -89,7 +39,7 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 //   - int / int64
 //   - bool
 //   - flag.Value
-//   - encoding.TextUnmarshaler
+//   - encoding.TextUnmarshaler | encoding.TextMarshaler
 //
 // If encoding.TextUnmarshler is used then a method on the struct must be used
 // to provide defaults to encoding.TextUnmarshaler:
@@ -111,9 +61,9 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 //	var f Flag
 //	StructVar(&f, nil)
 //	flag.Parse()
-func StructVar(v any, fs FlagSet) {
+func StructVar(v any, fs *flag.FlagSet) {
 	if fs == nil {
-		fs = FlagModule
+		fs = flag.CommandLine
 	}
 
 	rv := reflect.ValueOf(v)
