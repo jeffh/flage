@@ -35,7 +35,7 @@ type Example struct {
     D    time.Duration
 }
 var opt Example
-StructVar(&opt, nil) // this nil can be an optional flagset, otherwise, assumes the global flag
+StructVar(&opt, nil) // this nil can be an optional flagset, otherwise, assumes flag.CommandLine
 flag.Parse()
 // opt will be populated
 ```
