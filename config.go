@@ -13,6 +13,17 @@ import (
 	"github.com/google/shlex"
 )
 
+// TemplateConfigRenderer manages rendering of config files that is used by other helper functions:
+//
+// - ParseConfigFile
+// - ReadConfigFile
+// - ReadConfig
+// - ExtractEnvKeysFromConfigFile
+// - PreviewConfigFile
+// - PreviewConfig
+//
+// This allows you to set your own template variables and functions. Use DefaultTemplateFuncs to get
+// default template functions used.
 type TemplateConfigRenderer struct {
 	Data  map[string]string
 	Funcs template.FuncMap
@@ -118,6 +129,7 @@ func fileToCmdlineArgs(s string) string {
 	return out.String()[0 : out.Len()-1]
 }
 
+// PreviewConfig returns the contents of data by passing that is ready to pass to flag.FlagSet.Parse(...)
 func PreviewConfig(configPath string, data string) (string, error) {
 	r := TemplateConfigRenderer{}
 	out, err := r.Render(data, configPath)
@@ -126,6 +138,8 @@ func PreviewConfig(configPath string, data string) (string, error) {
 	}
 	return fileToCmdlineArgs(out), nil
 }
+
+// PreviewConfigFile returns the contents of file by passing that is ready to pass to flag.FlagSet.Parse(...)
 func PreviewConfigFile(file string) (string, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {

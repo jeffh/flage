@@ -38,6 +38,7 @@ func Reset(f flag.Value) {
 // Use ResetValues() to clear the slice (for multi-stage flag parsing)
 type Int64Slice []int64
 
+// String returns a string with ", " joined between each element
 func (i *Int64Slice) String() string {
 	var b bytes.Buffer
 	for j, f := range *i {
@@ -49,6 +50,7 @@ func (i *Int64Slice) String() string {
 	return b.String()
 }
 
+// Set appends an int64 or returns error if it is an invalid int. Use Reset() to reset the string slice to an empty slice.
 func (i *Int64Slice) Set(value string) error {
 	if value != "" {
 		v, err := strconv.ParseInt(value, 10, 64)
@@ -59,12 +61,15 @@ func (i *Int64Slice) Set(value string) error {
 	}
 	return nil
 }
+
+// Reset creates a new slice to use
 func (i *Int64Slice) Reset() { *i = make(Int64Slice, 0) }
 
 // Uint64Slice is a slice where mutliple of the flag appends to the slice
 // Use ResetValues() to clear the slice (for multi-stage flag parsing)
 type Uint64Slice []uint64
 
+// String returns a string with ", " joined between each element
 func (i *Uint64Slice) String() string {
 	var b bytes.Buffer
 	for j, f := range *i {
@@ -76,6 +81,7 @@ func (i *Uint64Slice) String() string {
 	return b.String()
 }
 
+// Set appends an int64 or returns error if it is an invalid uint. Use Reset() to reset the string slice to an empty slice.
 func (i *Uint64Slice) Set(value string) error {
 	if value != "" {
 		v, err := strconv.ParseUint(value, 10, 64)
@@ -86,12 +92,15 @@ func (i *Uint64Slice) Set(value string) error {
 	}
 	return nil
 }
+
+// Reset creates a new slice to use
 func (i *Uint64Slice) Reset() { *i = make(Uint64Slice, 0) }
 
 // FloatSlice is a slice where mutliple of the flag appends to the slice
 // Use ResetValues() to clear the slice (for multi-stage flag parsing)
 type FloatSlice []float64
 
+// String returns a string with ", " joined between each element
 func (i *FloatSlice) String() string {
 	var b bytes.Buffer
 	for j, f := range *i {
@@ -103,6 +112,7 @@ func (i *FloatSlice) String() string {
 	return b.String()
 }
 
+// Set appends an int64 or returns error if it is an invalid float64. Use Reset() to reset the string slice to an empty slice.
 func (i *FloatSlice) Set(value string) error {
 	if value != "" {
 		v, err := strconv.ParseFloat(value, 64)
@@ -119,6 +129,7 @@ func (i *FloatSlice) Reset() { *i = make(FloatSlice, 0) }
 // Use ResetValues() to clear the slice (for multi-stage flag parsing)
 type StringSlice []string
 
+// String returns a string with ", " joined between each element
 func (i *StringSlice) String() string { return strings.Join(*i, ", ") }
 
 // Set appends to the string slice. Use Reset() to reset the string slice to an empty slice.
@@ -128,4 +139,6 @@ func (i *StringSlice) Set(value string) error {
 	}
 	return nil
 }
+
+// Reset creates a new slice to use
 func (i *StringSlice) Reset() { *i = make(StringSlice, 0) }
