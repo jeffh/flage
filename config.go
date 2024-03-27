@@ -165,21 +165,24 @@ func ExtractEnvKeysFromConfigFile(file string) ([][2]string, error) {
 // Comments are lines that start with a '#' (and not in the middle).
 //
 // The configuration file format assumes:
+//
 // - any line that starts with a '#' is a comment and ignored (ignoring leading whitespace)
 // - all lines are replaced with spaces
 // - then input is passed to shlex.Split to split by shell parsing rules
 //
 // This is also templated, so the following variables are available:
+//
 // - configDir: the directory of the config file
 //
 // The following functions are available:
+//
 // - env(key): returns the value of the environment variable
 // - envOr(key, def): returns the value of the environment variable or the default value
 // - envOrError(key, msg): returns the value of the environment variable or errors with msg
 //
 // Example:
 //
-// -load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
+//	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
 func ReadConfig(configPath string, data string) ([]string, error) {
 	r := TemplateConfigRenderer{}
 	out, err := r.Render(data, configPath)
@@ -202,20 +205,23 @@ func ReadConfig(configPath string, data string) ([]string, error) {
 // Comments are lines that start with a '#' (and not in the middle).
 //
 // The configuration file format assumes:
+//
 // - any line that starts with a '#' is a comment and ignored (ignoring leading whitespace)
 // - all lines are replaced with spaces
 // - then input is passed to shlex.Split to split by shell parsing rules
 //
 // This is also templated, so the following variables are available:
+//
 // - configDir: the directory of the config file
 //
 // The following functions are available:
+//
 // - env(key): returns the value of the environment variable
 // - envOr(key, def): returns the value of the environment variable or the default value
 //
 // Example:
 //
-// -load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
+//	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
 func ReadConfigFile(file string) ([]string, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -236,21 +242,24 @@ func ReadConfigFile(file string) ([]string, error) {
 // Comments are lines that start with a '#' (and not in the middle).
 //
 // The configuration file format assumes:
+//
 // - any line that starts with a '#' is a comment and ignored (ignoring leading whitespace)
 // - all lines are replaced with spaces
 // - then input is passed to shlex.Split to split by shell parsing rules
 //
 // This is also templated, so the following variables are available:
+//
 // - configDir: the directory of the config file
 //
 // The following functions are available:
+//
 // - env(key): returns the value of the environment variable
 // - envOr(key, def): returns the value of the environment variable or the default value
 // - envOrError(key, msg): returns the value of the environment variable or errors with msg
 //
 // Example:
 //
-// -load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
+//	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
 func ParseConfigFile(file string) error {
 	args, err := ReadConfigFile(file)
 	if err != nil {
@@ -262,6 +271,7 @@ func ParseConfigFile(file string) error {
 // ParseEnvFile reads a file like an enviroment file.
 //
 // File format:
+//
 //   - "#" are to-end-of-line comments
 //   - each line is in KEY=VALUE format
 //   - any line without an equal sign is ignored
