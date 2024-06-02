@@ -134,9 +134,7 @@ func (i *StringSlice) String() string { return strings.Join(*i, ", ") }
 
 // Set appends to the string slice. Use Reset() to reset the string slice to an empty slice.
 func (i *StringSlice) Set(value string) error {
-	if value != "" {
-		*i = append(*i, value)
-	}
+	*i = append(*i, value)
 	return nil
 }
 
