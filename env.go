@@ -11,6 +11,7 @@ import (
 // a dictionary key-value lookup interface
 type Lookuper interface {
 	Lookup(ctx context.Context, key string) ([]string, bool)
+	Keys() []string
 }
 
 var (
@@ -109,6 +110,15 @@ func (e StringsMap) Lookup(_ context.Context, key string) ([]string, bool) {
 	return nil, false
 }
 
+func (e StringsMap) Keys() []string {
+	keys := make([]string, 0)
+	for k := range e {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
 type capturingEnvMap struct {
 	Usages []EnvUsage
 }
@@ -147,6 +157,8 @@ func (e *capturingEnvMap) Lookup(ctx context.Context, key string) ([]string, boo
 	}
 	return nil, false // we always will defer to parent
 }
+
+func (e *capturingEnvMap) Keys() []string { return nil }
 
 func (e *Env) Lookup(ctx context.Context, key string) (string, bool) {
 	ctx = withContext(ctx, false, "")
@@ -189,3 +201,16 @@ func (e *Env) GetOr(key, defvalue string) string {
 }
 
 func (e *Env) Get(key string) string { return e.GetOr(key, "") }
+
+func (e *Env) Keys() []string {
+	keys := e.Dict.Keys()
+	if e.Parent != nil {
+		parentKeys := e.Parent.Keys()
+		for _, k := range keys {
+			if !slices.Contains(parentKeys, k) {
+				parentKeys = append(parentKeys, k)
+			}
+		}
+	}
+	return keys
+}
