@@ -160,14 +160,14 @@ func (e *capturingEnvMap) Lookup(ctx context.Context, key string) ([]string, boo
 
 func (e *capturingEnvMap) Keys() []string { return nil }
 
-func (e *Env) Lookup(ctx context.Context, key string) (string, bool) {
+func (e *Env) lookup(ctx context.Context, key string) (string, bool) {
 	ctx = withContext(ctx, false, "")
 	if e == nil {
 		return "", false
 	}
 	if e.Dict == nil {
 		if e.Parent != nil {
-			return e.Parent.Lookup(ctx, key)
+			return e.Parent.lookup(ctx, key)
 		}
 		return "", false
 	}
@@ -178,15 +178,18 @@ func (e *Env) Lookup(ctx context.Context, key string) (string, bool) {
 		return "", false
 	} else {
 		if e.Parent != nil {
-			return e.Parent.Lookup(ctx, key)
+			return e.Parent.lookup(ctx, key)
 		}
 		return "", false
 	}
 }
+func (e *Env) Lookup(key string) (string, bool) {
+	return e.lookup(context.Background(), key)
+}
 
 func (e *Env) GetOrError(key, errorMsg string) (string, error) {
 	ctx := withContext(context.Background(), true, "")
-	if v, ok := e.Lookup(ctx, key); ok {
+	if v, ok := e.lookup(ctx, key); ok {
 		return v, nil
 	}
 	return "", fmt.Errorf("require env var %s: %s", key, errorMsg)
@@ -194,7 +197,7 @@ func (e *Env) GetOrError(key, errorMsg string) (string, error) {
 
 func (e *Env) GetOr(key, defvalue string) string {
 	ctx := withContext(context.Background(), false, defvalue)
-	if v, ok := e.Lookup(ctx, key); ok {
+	if v, ok := e.lookup(ctx, key); ok {
 		return v
 	}
 	return defvalue
