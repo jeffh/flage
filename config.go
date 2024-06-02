@@ -25,31 +25,18 @@ import (
 // This allows you to set your own template variables and functions. Use DefaultTemplateFuncs to get
 // default template functions used.
 type TemplateConfigRenderer struct {
+	Env   *Env
 	Data  map[string]string
-	Funcs template.FuncMap
+	Funcs func(*Env) template.FuncMap
 }
 
-func DefaultTemplateFuncs() template.FuncMap {
+type FuncsConstructor func(*Env) template.FuncMap
+
+func DefaultTemplateFuncs(env *Env) template.FuncMap {
 	return template.FuncMap{
-		"env": func(key string) string {
-			return os.Getenv(key)
-		},
-		"envOrError": func(key, msg string) (string, error) {
-			if v, ok := os.LookupEnv(key); ok {
-				return v, nil
-			}
-			if msg != "" {
-				return "", fmt.Errorf("require env var: %q: %s", key, msg)
-			} else {
-				return "", fmt.Errorf("require env var: %q", key)
-			}
-		},
-		"envOr": func(key, def string) string {
-			if v, ok := os.LookupEnv(key); ok {
-				return v
-			}
-			return def
-		},
+		"env":        env.Get,
+		"envOrError": env.GetOrError,
+		"envOr":      env.GetOr,
 		"json": func(v interface{}) (string, error) {
 			b, err := json.Marshal(v)
 			if err != nil {
@@ -59,52 +46,44 @@ func DefaultTemplateFuncs() template.FuncMap {
 		},
 	}
 }
-func DefaultPreviewTemplateFuncs(keys *[][2]string) template.FuncMap {
-	addKey := func(k, defvalue string) {
-		for _, v := range *keys {
-			if v[0] == k {
-				return
-			}
+func defaultPreviewTemplateFuncs() (*capturingEnvMap, FuncsConstructor) {
+	capturing := &capturingEnvMap{}
+	return capturing, func(env *Env) template.FuncMap {
+		return template.FuncMap{
+			"env": env.Get,
+			"envOrError": func(key, msg string) (string, error) {
+				key, err := env.GetOrError(key, msg)
+				if err != nil { // suppress error
+					return msg, nil
+				}
+				return "", nil
+			},
+			"envOr": env.GetOr,
+			"json": func(v interface{}) (string, error) {
+				b, err := json.Marshal(v)
+				if err != nil {
+					return "", err
+				}
+				return string(b), nil
+			},
 		}
-		*keys = append(*keys, [2]string{k, defvalue})
-	}
-	return template.FuncMap{
-		"env": func(key string) string {
-			addKey(key, "")
-			return os.Getenv(key)
-		},
-		"envOrError": func(key, msg string) (string, error) {
-			addKey(key, "NEEDS_TO_BE_FILLED")
-			return os.Getenv(key), nil
-		},
-		"envOr": func(key, def string) string {
-			addKey(key, def)
-			if v, ok := os.LookupEnv(key); ok {
-				return v
-			}
-			return def
-		},
-		"json": func(v interface{}) (string, error) {
-			b, err := json.Marshal(v)
-			if err != nil {
-				return "", err
-			}
-			return string(b), nil
-		},
 	}
 }
 
 func (r *TemplateConfigRenderer) Render(data string, configPath string) (string, error) {
+	if r.Env == nil {
+		r.Env = EnvSystem(nil)
+	}
 	if r.Data == nil {
 		r.Data = make(map[string]string)
 	}
 	r.Data["configDir"] = path.Dir(configPath)
 
 	if r.Funcs == nil {
-		r.Funcs = DefaultTemplateFuncs()
+		r.Funcs = DefaultTemplateFuncs
 	}
 
-	tmpl, err := template.New("config").Funcs(r.Funcs).Parse(data)
+	tmpl, err := template.New("config").Funcs(r.Funcs(r.Env)).Parse(data)
 	if err != nil {
 		return "", err
 	}
@@ -130,8 +109,8 @@ func fileToCmdlineArgs(s string) string {
 }
 
 // PreviewConfig returns the contents of data by passing that is ready to pass to flag.FlagSet.Parse(...)
-func PreviewConfig(configPath string, data string) (string, error) {
-	r := TemplateConfigRenderer{}
+func PreviewConfig(env *Env, configPath string, data string) (string, error) {
+	r := TemplateConfigRenderer{Env: env}
 	out, err := r.Render(data, configPath)
 	if err != nil {
 		return "", err
@@ -140,34 +119,35 @@ func PreviewConfig(configPath string, data string) (string, error) {
 }
 
 // PreviewConfigFile returns the contents of file by passing that is ready to pass to flag.FlagSet.Parse(...)
-func PreviewConfigFile(file string) (string, error) {
+func PreviewConfigFile(env *Env, file string) (string, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return "", fmt.Errorf("failed to open config file: %s: %w", file, err)
 	}
-	args, err := PreviewConfig(file, string(data))
+	args, err := PreviewConfig(env, file, string(data))
 	if err != nil {
 		return "", fmt.Errorf("failed to read config file: %s: %w", file, err)
 	}
 	return args, nil
 }
 
-func observeEnvReadsTemplate(data string, configPath string) ([][2]string, error) {
-	var keys [][2]string
+func observeEnvReadsTemplate(env *Env, data string, configPath string) ([][2]string, error) {
+	capture, funcs := defaultPreviewTemplateFuncs()
 	r := TemplateConfigRenderer{
-		Funcs: DefaultPreviewTemplateFuncs(&keys),
+		Env:   env,
+		Funcs: funcs,
 	}
 	_, err := r.Render(data, configPath)
-	return keys, err
+	return capture.UsagesAsEnviron("NEEDS_TO_BE_FILLED"), err
 }
 
 // ExtractEnvKeysFromConfigFile returns the environment keys that are read from a given config file.
-func ExtractEnvKeysFromConfigFile(file string) ([][2]string, error) {
+func ExtractEnvKeysFromConfigFile(env *Env, file string) ([][2]string, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %s: %w", file, err)
 	}
-	keys, err := observeEnvReadsTemplate(string(data), file)
+	keys, err := observeEnvReadsTemplate(env, string(data), file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %s: %w", file, err)
 	}
@@ -177,6 +157,7 @@ func ExtractEnvKeysFromConfigFile(file string) ([][2]string, error) {
 // ReadConfigFile returns args to parse from a given file path
 //
 // Comments are lines that start with a '#' (and not in the middle).
+// If env is given to nil, it defaults to EnvSystem(nil).
 //
 // The configuration file format assumes:
 //
@@ -197,8 +178,8 @@ func ExtractEnvKeysFromConfigFile(file string) ([][2]string, error) {
 // Example:
 //
 //	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
-func ReadConfig(configPath string, data string) ([]string, error) {
-	r := TemplateConfigRenderer{}
+func ReadConfig(env *Env, configPath string, data string) ([]string, error) {
+	r := TemplateConfigRenderer{Env: env}
 	out, err := r.Render(data, configPath)
 	if err != nil {
 		return nil, err
@@ -217,6 +198,7 @@ func ReadConfig(configPath string, data string) ([]string, error) {
 // If you have already opened the file, use ReadConfig instead.
 //
 // Comments are lines that start with a '#' (and not in the middle).
+// If env is given to nil, it defaults to EnvSystem(nil).
 //
 // The configuration file format assumes:
 //
@@ -236,12 +218,12 @@ func ReadConfig(configPath string, data string) ([]string, error) {
 // Example:
 //
 //	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
-func ReadConfigFile(file string) ([]string, error) {
+func ReadConfigFile(env *Env, file string) ([]string, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open config file: %s: %w", file, err)
 	}
-	args, err := ReadConfig(file, string(data))
+	args, err := ReadConfig(env, file, string(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %s: %w", file, err)
 	}
@@ -254,6 +236,7 @@ func ReadConfigFile(file string) ([]string, error) {
 // If you want to only read the file, use ReadConfig instead.
 //
 // Comments are lines that start with a '#' (and not in the middle).
+// If env is given to nil, it defaults to EnvSystem(nil).
 //
 // The configuration file format assumes:
 //
@@ -274,26 +257,22 @@ func ReadConfigFile(file string) ([]string, error) {
 // Example:
 //
 //	-load {{.configDir}}/file.txt -secret {{env "SECRET"}} -port {{envOr "PORT" "8080"}}
-func ParseConfigFile(file string) error {
-	args, err := ReadConfigFile(file)
+func ParseConfigFile(env *Env, file string) error {
+	args, err := ReadConfigFile(env, file)
 	if err != nil {
 		return err
 	}
 	return flag.CommandLine.Parse(args)
 }
 
-// ParseEnvFile reads a file like an enviroment file.
+// ParseEnvironFile reads bytes like an enviroment file.
 //
 // File format:
 //
 //   - "#" are to-end-of-line comments
 //   - each line is in KEY=VALUE format
 //   - any line without an equal sign is ignored
-func ParseEnvFile(file string) ([][2]string, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, err
-	}
+func ParseEnvironFile(data []byte) ([][2]string, error) {
 	lines := strings.Split(string(data), "\n")
 	var res [][2]string
 	for _, line := range lines {
@@ -309,14 +288,17 @@ func ParseEnvFile(file string) ([][2]string, error) {
 	return res, nil
 }
 
-// SourceEnvFile parses a env file via ParseEnvFile and sets the process' environment variables
-func SourceEnvFile(file string) error {
-	pairs, err := ParseEnvFile(file)
+// ReadEnvironFile reads a file like an enviroment file.
+//
+// File format:
+//
+//   - "#" are to-end-of-line comments
+//   - each line is in KEY=VALUE format
+//   - any line without an equal sign is ignored
+func ReadEnvironFile(file string) ([][2]string, error) {
+	data, err := os.ReadFile(file)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	for _, pair := range pairs {
-		os.Setenv(pair[0], pair[1])
-	}
-	return nil
+	return ParseEnvironFile(data)
 }
