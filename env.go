@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 )
 
 // a dictionary key-value lookup interface
@@ -20,10 +21,10 @@ var (
 	defvalueValueCtxKey int
 )
 
-func withContext(ctx context.Context, required bool, defvalue string) context.Context {
+func withContext(ctx context.Context, required bool, defvalue []string) context.Context {
 	if !isUnderLookup(ctx) {
 		ctx = context.WithValue(ctx, &isRequiredCtxKey, required)
-		if defvalue != "" {
+		if len(defvalue) > 0 {
 			ctx = context.WithValue(ctx, &defvalueValueCtxKey, defvalue)
 		}
 		ctx = context.WithValue(ctx, &isUnderLookupCtxKey, true)
@@ -51,17 +52,18 @@ func contextIsLookingUpRequiredKey(ctx context.Context) bool {
 	return false
 }
 
-func contextGetDefaultLookupValue(ctx context.Context) (string, bool) {
+func contextGetDefaultLookupValue(ctx context.Context) ([]string, bool) {
 	if ctx == nil {
-		return "", false
+		return nil, false
 	}
-	if v, ok := ctx.Value(&defvalueValueCtxKey).(string); ok {
+	if v, ok := ctx.Value(&defvalueValueCtxKey).([]string); ok {
 		return v, true
 	}
-	return "", false
+	return nil, false
 }
 
 type Env struct {
+	cache  map[string]string
 	Parent *Env
 	Dict   Lookuper
 }
@@ -75,16 +77,19 @@ func EnvMap(parent *Env, m map[string][]string) *Env {
 }
 
 var sysEnv StringsMap
+var sysEnvOnce sync.Once
+
+func makeEnvMap() {
+	sysEnv = make(StringsMap)
+	for _, e := range os.Environ() {
+		parts := strings.SplitN(e, "=", 2)
+		key := parts[0]
+		sysEnv[key] = append(sysEnv[key], parts[1])
+	}
+}
 
 func EnvSystem(parent *Env) *Env {
-	if sysEnv == nil {
-		L := make(StringsMap)
-		for _, e := range os.Environ() {
-			parts := strings.SplitN(e, "=", 2)
-			L[parts[0]] = append(L[parts[0]], parts[1])
-		}
-		sysEnv = L
-	}
+	sysEnvOnce.Do(makeEnvMap)
 	return NewEnv(parent, sysEnv)
 }
 
@@ -125,7 +130,7 @@ type capturingEnvMap struct {
 
 type EnvUsage struct {
 	Key      string
-	Default  string
+	Default  []string
 	Required bool
 }
 
@@ -133,15 +138,23 @@ func (e *capturingEnvMap) UsagesAsEnviron(requiredValue string) [][2]string {
 	var env [][2]string
 	for _, u := range e.Usages {
 		var value [2]string
-		if u.Default != "" {
-			value = [2]string{u.Key, u.Default}
+		if len(u.Default) > 0 {
+			for _, v := range u.Default {
+				value = [2]string{u.Key, v}
+				if !slices.Contains(env, value) {
+					env = append(env, value)
+				}
+			}
 		} else if u.Required {
 			value = [2]string{u.Key, requiredValue}
+			if !slices.Contains(env, value) {
+				env = append(env, value)
+			}
 		} else {
 			value = [2]string{u.Key, ""}
-		}
-		if !slices.Contains(env, value) {
-			env = append(env, value)
+			if !slices.Contains(env, value) {
+				env = append(env, value)
+			}
 		}
 	}
 	return env
@@ -160,35 +173,41 @@ func (e *capturingEnvMap) Lookup(ctx context.Context, key string) ([]string, boo
 
 func (e *capturingEnvMap) Keys() []string { return nil }
 
-func (e *Env) lookup(ctx context.Context, key string) (string, bool) {
-	ctx = withContext(ctx, false, "")
+func (e *Env) lookupMany(ctx context.Context, key string) ([]string, bool) {
+	ctx = withContext(ctx, false, nil)
 	if e == nil {
-		return "", false
+		return nil, false
 	}
 	if e.Dict == nil {
 		if e.Parent != nil {
-			return e.Parent.lookup(ctx, key)
+			return e.Parent.lookupMany(ctx, key)
 		}
-		return "", false
+		return nil, false
 	}
 	if v, ok := e.Dict.Lookup(ctx, key); ok {
+		return v, false
+	} else {
+		if e.Parent != nil {
+			return e.Parent.lookupMany(ctx, key)
+		}
+		return nil, false
+	}
+}
+func (e *Env) lookup(ctx context.Context, key string) (string, bool) {
+	if v, ok := e.lookupMany(ctx, key); ok {
 		if len(v) > 0 {
 			return v[0], true
 		}
 		return "", false
-	} else {
-		if e.Parent != nil {
-			return e.Parent.lookup(ctx, key)
-		}
-		return "", false
 	}
+	return "", false
 }
 func (e *Env) Lookup(key string) (string, bool) {
 	return e.lookup(context.Background(), key)
 }
 
 func (e *Env) GetOrError(key, errorMsg string) (string, error) {
-	ctx := withContext(context.Background(), true, "")
+	ctx := withContext(context.Background(), true, nil)
 	if v, ok := e.lookup(ctx, key); ok {
 		return v, nil
 	}
@@ -196,7 +215,7 @@ func (e *Env) GetOrError(key, errorMsg string) (string, error) {
 }
 
 func (e *Env) GetOr(key, defvalue string) string {
-	ctx := withContext(context.Background(), false, defvalue)
+	ctx := withContext(context.Background(), false, []string{defvalue})
 	if v, ok := e.lookup(ctx, key); ok {
 		return v
 	}
@@ -216,4 +235,28 @@ func (e *Env) Keys() []string {
 		}
 	}
 	return keys
+}
+
+func (e *Env) Map() map[string][]string {
+	dict := make(map[string][]string)
+	ctx := withContext(context.Background(), false, nil)
+	for _, k := range e.Keys() {
+		if v, ok := e.lookupMany(ctx, k); ok {
+			dict[k] = v
+		}
+	}
+	return dict
+}
+
+func (e *Env) Slice() [][2]string {
+	pairs := make([][2]string, 0)
+	ctx := withContext(context.Background(), false, nil)
+	for _, k := range e.Keys() {
+		if vs, ok := e.lookupMany(ctx, k); ok {
+			for _, v := range vs {
+				pairs = append(pairs, [2]string{k, v})
+			}
+		}
+	}
+	return pairs
 }
