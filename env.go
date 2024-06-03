@@ -73,15 +73,11 @@ func NewEnv(parent *Env, dict Lookuper) *Env {
 	return &Env{Parent: parent, Dict: dict}
 }
 
-func EnvMap(parent *Env, m map[string][]string) *Env {
-	return NewEnv(parent, StringsMap(m))
-}
-
-var sysEnv StringsMap
+var sysEnv EnvMap
 var sysEnvOnce sync.Once
 
 func makeEnvMap() {
-	sysEnv = make(StringsMap)
+	sysEnv = make(EnvMap)
 	for _, e := range os.Environ() {
 		parts := strings.SplitN(e, "=", 2)
 		key := parts[0]
@@ -100,23 +96,25 @@ func EnvFile(parent *Env, filepath string) (*Env, error) {
 		return nil, err
 	}
 	environ, err := ParseEnvironFile(data)
-	envmap := make(StringsMap)
+	envmap := make(EnvMap)
 	for _, pairs := range environ {
 		envmap[pairs[0]] = append(envmap[pairs[0]], pairs[1])
 	}
 	return NewEnv(parent, envmap), nil
 }
 
-type StringsMap map[string][]string
+// Represents a map of environment variables. Environment variables are appended when they are set.
+// Supports multiple assignments as a flag argument using the format KEY=VALUE.
+type EnvMap map[string][]string
 
-func (e StringsMap) Lookup(_ context.Context, key string) ([]string, bool) {
+func (e EnvMap) Lookup(_ context.Context, key string) ([]string, bool) {
 	if v, ok := e[key]; ok {
 		return v, true
 	}
 	return nil, false
 }
 
-func (e StringsMap) Keys() []string {
+func (e EnvMap) Keys() []string {
 	keys := make([]string, 0)
 	for k := range e {
 		keys = append(keys, k)
@@ -260,4 +258,19 @@ func (e *Env) Slice() [][2]string {
 		}
 	}
 	return pairs
+}
+
+func (e *EnvMap) Set(value string) {
+	parts := strings.SplitN(value, "=", 2)
+	key := parts[0]
+	if len(parts) == 1 {
+		(*e)[key] = append((*e)[key], "")
+		return
+	} else {
+		(*e)[key] = append((*e)[key], parts[1])
+	}
+}
+
+func (e *EnvMap) Reset() {
+	*e = make(EnvMap)
 }
