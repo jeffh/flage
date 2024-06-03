@@ -15,10 +15,12 @@ type Lookuper interface {
 	Keys() []string
 }
 
+type contextKey int
+
 var (
-	isUnderLookupCtxKey int
-	isRequiredCtxKey    int
-	defvalueValueCtxKey int
+	isUnderLookupCtxKey contextKey
+	isRequiredCtxKey    contextKey
+	defvalueValueCtxKey contextKey
 )
 
 func withContext(ctx context.Context, required bool, defvalue []string) context.Context {
