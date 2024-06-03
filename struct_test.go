@@ -136,6 +136,50 @@ func TestStructVarParsingWithTags(t *testing.T) {
 	}
 }
 
+func TestStructVarParsingNestedStructs(t *testing.T) {
+	type Example struct {
+		Bool bool          `flage:"b,true"`
+		Str  string        `flage:",world"`
+		U    uint          `flage:"uint,2"`
+		U64  uint64        `flage:"uint64,6"`
+		I    int           `flage:"int,-2"`
+		I64  int64         `flage:"int64,-6"`
+		F64  float64       `flage:"float64,64"`
+		D    time.Duration `flage:"dur,15s"`
+	}
+	type Nested struct {
+		Example Example `flage:"*"`
+	}
+	var example Nested
+	fs := FlagSetStruct("test", flag.ContinueOnError, &example)
+	err := fs.Parse([]string{
+		"-str", "hello",
+		"-uint64", "1024",
+		"-int64", "-1024",
+		"-float64", "-3.5",
+	})
+	if err != nil {
+		t.Errorf("failed to parse flags: %s", err.Error())
+	}
+
+	expected := Nested{
+		Example: Example{
+			Bool: true,
+			Str:  "hello",
+			U:    2,
+			U64:  1024,
+			I:    -2,
+			I64:  -1024,
+			F64:  -3.5,
+			D:    15 * time.Second,
+		},
+	}
+
+	if !reflect.DeepEqual(expected, example) {
+		t.Errorf("expected %#v, got %#v", expected, example)
+	}
+}
+
 func TestStructVarParsingWithDefaults(t *testing.T) {
 	type Example struct {
 		Bool bool          `flage:",true"`
@@ -284,6 +328,7 @@ func TestStructVarWithTextMarshaler(t *testing.T) {
 }
 
 func expectPanic(t *testing.T, msg string) {
+	t.Helper()
 	err := recover()
 	if err == nil {
 		t.Error("expected panic")

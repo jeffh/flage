@@ -82,10 +82,15 @@ func StructVar(v any, fs *flag.FlagSet) {
 		name := strings.ToLower(f.Name)
 		defaultValue := ""
 		docstring := ""
+		var isSplat bool
 		if raw := strings.TrimSpace(f.Tag.Get("flage")); raw != "" {
 			parts := strings.SplitN(raw, ",", 3)
 			if len(parts) > 0 && parts[0] != "" {
-				name = parts[0]
+				if parts[0] == "*" {
+					isSplat = true
+				} else {
+					name = parts[0]
+				}
 			}
 			if len(parts) > 1 {
 				val := strings.TrimSpace(parts[1])
@@ -240,6 +245,12 @@ func StructVar(v any, fs *flag.FlagSet) {
 					}
 				}
 				fs.Float64Var(ptr.(*float64), name, v, docstring)
+			case reflect.Struct:
+				if isSplat {
+					StructVar(ptr, fs)
+				} else {
+					panic(fmt.Errorf("%s.%s has an unsupported type: %s", t.Name(), f.Name, f.Type.String()))
+				}
 			default:
 				panic(fmt.Errorf("%s.%s has an unsupported type: %s", t.Name(), f.Name, f.Type.String()))
 			}
