@@ -63,7 +63,6 @@ func contextGetDefaultLookupValue(ctx context.Context) ([]string, bool) {
 }
 
 type Env struct {
-	cache  map[string]string
 	Parent *Env
 	Dict   Lookuper
 }
@@ -185,7 +184,7 @@ func (e *Env) lookupMany(ctx context.Context, key string) ([]string, bool) {
 		return nil, false
 	}
 	if v, ok := e.Dict.Lookup(ctx, key); ok {
-		return v, false
+		return v, true
 	} else {
 		if e.Parent != nil {
 			return e.Parent.lookupMany(ctx, key)
