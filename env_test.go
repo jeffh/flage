@@ -34,12 +34,12 @@ func TestSystemEnv(t *testing.T) {
 }
 
 func TestEnvTree(t *testing.T) {
-	parent := EnvMap(nil, map[string][]string{
+	parent := NewEnv(nil, EnvMap{
 		"FLAGE_TEST":        {"test"},
 		"FLAGE_TEST_PARENT": {"parent"},
 	})
 
-	child := EnvMap(parent, map[string][]string{
+	child := NewEnv(parent, EnvMap{
 		"FLAGE_TEST_CHILD": {"test_child"},
 		"FLAGE_TEST":       {"test_override"},
 	})
