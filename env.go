@@ -2,6 +2,7 @@ package flage
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"slices"
@@ -106,6 +107,8 @@ func EnvFile(parent *Env, filepath string) (*Env, error) {
 // Represents a map of environment variables. Environment variables are appended when they are set.
 // Supports multiple assignments as a flag argument using the format KEY=VALUE.
 type EnvMap map[string][]string
+
+var _ flag.Value = (*EnvMap)(nil)
 
 func (e EnvMap) Lookup(_ context.Context, key string) ([]string, bool) {
 	if v, ok := e[key]; ok {
@@ -260,15 +263,15 @@ func (e *Env) Slice() [][2]string {
 	return pairs
 }
 
-func (e *EnvMap) Set(value string) {
+func (e *EnvMap) Set(value string) error {
 	parts := strings.SplitN(value, "=", 2)
 	key := parts[0]
 	if len(parts) == 1 {
 		(*e)[key] = append((*e)[key], "")
-		return
 	} else {
 		(*e)[key] = append((*e)[key], parts[1])
 	}
+	return nil
 }
 
 func (e *EnvMap) Reset() {
