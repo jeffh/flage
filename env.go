@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -272,6 +273,19 @@ func (e *EnvMap) Set(value string) error {
 		(*e)[key] = append((*e)[key], parts[1])
 	}
 	return nil
+}
+
+func (e *EnvMap) String() string {
+	var sb strings.Builder
+	for k, vs := range *e {
+		for _, v := range vs {
+			sb.WriteString(k)
+			sb.WriteString("=")
+			sb.WriteString(strconv.Quote(v))
+			sb.WriteString("\n")
+		}
+	}
+	return sb.String()
 }
 
 func (e *EnvMap) Reset() {
