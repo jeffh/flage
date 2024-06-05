@@ -30,9 +30,14 @@ func (b *resettableValue[T]) Set(s string) error {
 	*b.ptr = v
 	return err
 }
-func (b *resettableValue[T]) Get() any       { return T(*b.ptr) }
-func (b *resettableValue[T]) String() string { return b.stringer(*b.ptr) }
-func (b *resettableValue[T]) Reset()         { *b.ptr = b.defvalue }
+func (b *resettableValue[T]) Get() any { return T(*b.ptr) }
+func (b *resettableValue[T]) String() string {
+	if b == nil {
+		return ""
+	}
+	return b.stringer(*b.ptr)
+}
+func (b *resettableValue[T]) Reset() { *b.ptr = b.defvalue }
 
 func newVar[T any](ptr *T, defvalue T, parser func(string) (T, error), stringer func(T) string, isBool bool) *resettableValue[T] {
 	*ptr = defvalue
