@@ -10,12 +10,6 @@ import (
 	"time"
 )
 
-// FieldTextMarshaler is the interface a struct needs to implement if it has fields
-// of type encoding.TextUnmarshaler to return the appropriate default value.
-type FieldTextMarshaler interface {
-	MarshalFlagField(field string) encoding.TextMarshaler
-}
-
 // FlagSetStruct makes a new flagset based on an output string to set to
 func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, errHandling)
@@ -27,7 +21,8 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 // If fs is nil, then the global functions in the flag package are used instead.
 //
 // Tags use the "flag" key with the following values: "<flagName>,<defaultValue>,<description>"
-// If <flagName> is empty, then the lowercase of the fieldname is used.
+// If <flagName> is empty, then the lowercase of the fieldname is used. Can be set to "-" to ignore.
+// Can be set to "*" to recursively parse the struct as top-level flags.
 // If <defaultValue> is empty, then the zero value is used.
 // If <description> is empty, then the empty string is used.
 //
@@ -41,15 +36,11 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 //   - flag.Value
 //   - encoding.TextUnmarshaler | encoding.TextMarshaler
 //
-// If encoding.TextUnmarshler is used then a method on the struct must be used
-// to provide defaults to encoding.TextUnmarshaler:
+// Also additional types are supported:
 //
-//	func (m *myOptions) MarshalFlagField(field string) encoding.TextMarshaler {
-//	  if field == "myTextUnmarshalerField" {
-//	    return big.NewInt(123)
-//	  }
-//	  return nil // panics will happen if we return nil
-//	}
+//   - float32
+//
+// Future support for built-in types may be added in the future.
 //
 // Example:
 //
@@ -122,52 +113,9 @@ func StructVar(v any, fs *flag.FlagSet) {
 
 		ptr := rv.Field(i).Addr().Interface()
 		if pt, ok := ptr.(flag.Value); ok {
-			fs.Var(pt, name, docstring)
+			Var(fs, pt, name, defaultValue, docstring)
 		} else if pt, ok := ptr.(encoding.TextUnmarshaler); ok {
-			if provider, ok := v.(FieldTextMarshaler); ok {
-				defaultMarshalValue := provider.MarshalFlagField(f.Name)
-				if defaultMarshalValue != nil {
-					fs.TextVar(pt, name, defaultMarshalValue, docstring)
-				} else {
-					if defaultValue != "" {
-						if um, ok := ptr.(encoding.TextMarshaler); ok {
-							err := pt.UnmarshalText([]byte(defaultValue))
-							if err != nil {
-								panic(fmt.Errorf("error parsing default value on field %s.%s: %w", t.Name(), f.Name, err))
-							}
-							fs.TextVar(pt, name, um, docstring)
-						} else {
-							panic(fmt.Sprintf("%s.%s must have a type that implements encoding.TextMarshaler (in addition to encoding.TextUnmarshaler)", t.Name(), f.Name))
-						}
-					} else {
-						panic(fmt.Sprintf(
-							"%s.%s needs an explicitly defined default value. %s.MarshalFlagField method must return a non-nil encoding.TextMarshaler value",
-							t.Name(),
-							f.Name,
-							t.Name(),
-						))
-					}
-				}
-			} else {
-				if defaultValue != "" {
-					if um, ok := ptr.(encoding.TextMarshaler); ok {
-						err := pt.UnmarshalText([]byte(defaultValue))
-						if err != nil {
-							panic(fmt.Errorf("error parsing default value on field %q: %w", f.Name, err))
-						}
-						fs.TextVar(pt, name, um, docstring)
-					} else {
-						panic(fmt.Sprintf("%s must have a type that implements encoding.TextMarshaler", f.Name))
-					}
-				} else {
-					panic(fmt.Sprintf(
-						"%s.%s must have a default value set. Implement %s.MarshalFlagField method or implement encoding.TextMarshaler with a default value in flage tag",
-						t.Name(),
-						f.Name,
-						t.Name(),
-					))
-				}
-			}
+			TextVar(fs, pt, name, defaultValue, docstring)
 		} else {
 			switch f.Type.Kind() {
 			case reflect.Bool:
@@ -181,9 +129,9 @@ func StructVar(v any, fs *flag.FlagSet) {
 				if err != nil {
 					panic(err)
 				}
-				fs.BoolVar(ptr.(*bool), name, def, docstring)
+				BoolVar(fs, ptr.(*bool), name, def, docstring)
 			case reflect.String:
-				fs.StringVar(ptr.(*string), name, defaultValue, docstring)
+				StringVar(fs, ptr.(*string), name, defaultValue, docstring)
 			case reflect.Int:
 				if defaultValue == "" {
 					defaultValue = "0"
@@ -192,7 +140,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 				if err != nil {
 					panic(err)
 				}
-				fs.IntVar(ptr.(*int), name, int(v), docstring)
+				IntVar(fs, ptr.(*int), name, int(v), docstring)
 			case reflect.Int64:
 				if _, ok := ptr.(*time.Duration); ok {
 					var v time.Duration
@@ -203,7 +151,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 							panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 						}
 					}
-					fs.DurationVar(ptr.(*time.Duration), name, v, docstring)
+					DurationVar(fs, ptr.(*time.Duration), name, v, docstring)
 				} else {
 					var v int64
 					if defaultValue != "" {
@@ -213,7 +161,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 							panic(fmt.Errorf("failed to parse %s as integer (%q): %w", name, v, err))
 						}
 					}
-					fs.Int64Var(ptr.(*int64), name, v, docstring)
+					Int64Var(fs, ptr.(*int64), name, v, docstring)
 				}
 			case reflect.Uint:
 				var v uint64
@@ -224,7 +172,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				fs.UintVar(ptr.(*uint), name, uint(v), docstring)
+				UintVar(fs, ptr.(*uint), name, uint(v), docstring)
 			case reflect.Uint64:
 				var v uint64
 				if defaultValue != "" {
@@ -234,7 +182,17 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				fs.Uint64Var(ptr.(*uint64), name, v, docstring)
+				Uint64Var(fs, ptr.(*uint64), name, v, docstring)
+			case reflect.Float32:
+				var v float64
+				if defaultValue != "" {
+					var err error
+					v, err = strconv.ParseFloat(defaultValue, f.Type.Bits())
+					if err != nil {
+						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
+					}
+				}
+				Float32Var(fs, ptr.(*float32), name, float32(v), docstring)
 			case reflect.Float64:
 				var v float64
 				if defaultValue != "" {
@@ -244,7 +202,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				fs.Float64Var(ptr.(*float64), name, v, docstring)
+				Float64Var(fs, ptr.(*float64), name, v, docstring)
 			case reflect.Struct:
 				if isSplat {
 					StructVar(ptr, fs)

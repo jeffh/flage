@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+type resetable interface{ Reset() }
+
 // Reset zeros out the flag.Value given.
 //
 // If the flag.Value has a Reset() method, that is called instead.
@@ -26,7 +28,6 @@ import (
 //	flage.Reset(&args)
 //	fmt.Printf("args are: %s", strings.Join(args, ", ")) // will be empty
 func Reset(f flag.Value) {
-	type resetable interface{ Reset() }
 	if r, ok := f.(resetable); ok && r != nil {
 		r.Reset()
 	} else {
