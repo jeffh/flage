@@ -144,7 +144,12 @@ func textMarshal(m any, s string) string {
 
 func (b *textMarshalVar) Set(s string) error { return b.ptr.UnmarshalText([]byte(s)) }
 func (b *textMarshalVar) Get() any           { return b.ptr }
-func (b *textMarshalVar) String() string     { return textMarshal(b.ptr, b.defvalue) }
+func (b *textMarshalVar) String() string {
+	if b == nil {
+		return ""
+	}
+	return textMarshal(b.ptr, b.defvalue)
+}
 func (b *textMarshalVar) Reset() {
 	err := b.ptr.UnmarshalText([]byte(b.defvalue))
 	if err != nil {
@@ -153,5 +158,8 @@ func (b *textMarshalVar) Reset() {
 }
 
 func TextVar(fs *flag.FlagSet, p encoding.TextUnmarshaler, name string, value string, usage string) {
+	if err := p.UnmarshalText([]byte(value)); err != nil {
+		panic(fmt.Errorf("failed to set flag value %q: %w", name, err))
+	}
 	fs.Var(&textMarshalVar{p, value}, name, usage)
 }

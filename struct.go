@@ -58,6 +58,9 @@ func StructVar(v any, fs *flag.FlagSet) {
 	}
 
 	rv := reflect.ValueOf(v)
+	if rv.IsNil() {
+		panic("expected non-nil value")
+	}
 	for rv.Kind() == reflect.Ptr {
 		rv = rv.Elem()
 	}
