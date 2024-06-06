@@ -52,6 +52,13 @@ type resettableFlagVar struct {
 	defval string
 }
 
+func (b *resettableFlagVar) String() string {
+	if b == nil {
+		return ""
+	}
+	return b.Value.String()
+}
+
 func (b *resettableFlagVar) Reset() {
 	if v, ok := b.Value.(resetable); ok {
 		v.Reset()
