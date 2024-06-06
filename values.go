@@ -23,6 +23,9 @@ type resettableValue[T any] struct {
 
 func (b *resettableValue[T]) IsBoolFlag() bool { return b.isBool }
 func (b *resettableValue[T]) Set(s string) error {
+	if b == nil {
+		return nil
+	}
 	v, err := b.parser(s)
 	if err != nil {
 		err = errParse
@@ -32,7 +35,7 @@ func (b *resettableValue[T]) Set(s string) error {
 }
 func (b *resettableValue[T]) Get() any { return T(*b.ptr) }
 func (b *resettableValue[T]) String() string {
-	if b == nil {
+	if b == nil || b.stringer == nil {
 		return ""
 	}
 	return b.stringer(*b.ptr)
