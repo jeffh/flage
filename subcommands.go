@@ -143,6 +143,12 @@ type CommandIterator struct {
 func (it *CommandIterator) Next() bool   { return it.it.Next() }
 func (it *CommandIterator) FlagPtr() any { return it.compiledFlags.OutVarFromFlagset(it.it.FlagSet()) }
 func (it *CommandIterator) Err() error   { return it.it.Err() }
+func (it *CommandIterator) FlagDef() *FlagSetDefinition {
+	if def, ok := it.compiledFlags.DefinitionFromFlagset(it.it.FlagSet()); ok {
+		return def
+	}
+	return nil
+}
 
 // DefinitionFromFlagset returns the FlagSetDefinition for a given flagset
 func (fss *FlagSetsAndDefs) DefinitionFromFlagset(fs *flag.FlagSet) (*FlagSetDefinition, bool) {
