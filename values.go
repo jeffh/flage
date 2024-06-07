@@ -56,6 +56,9 @@ func (b *resettableFlagVar) String() string {
 	if b == nil {
 		return ""
 	}
+	if b.Value == nil {
+		return b.defval
+	}
 	return b.Value.String()
 }
 
