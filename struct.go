@@ -17,6 +17,13 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 	return fs
 }
 
+func prefixType(typeName string, docstring string) string {
+	if strings.Count(docstring, "`") > 2 {
+		return docstring
+	}
+	return "`" + typeName + "`" + docstring
+}
+
 // StructVar performs like flag.Var(...) but using a struct. Can optionally be annotated using tags.
 // If fs is nil, then the global functions in the flag package are used instead.
 //
@@ -134,7 +141,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 				}
 				BoolVar(fs, ptr.(*bool), name, def, docstring)
 			case reflect.String:
-				StringVar(fs, ptr.(*string), name, defaultValue, docstring)
+				StringVar(fs, ptr.(*string), name, defaultValue, prefixType("string", docstring))
 			case reflect.Int:
 				if defaultValue == "" {
 					defaultValue = "0"
@@ -143,7 +150,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 				if err != nil {
 					panic(err)
 				}
-				IntVar(fs, ptr.(*int), name, int(v), docstring)
+				IntVar(fs, ptr.(*int), name, int(v), prefixType("int", docstring))
 			case reflect.Int64:
 				if _, ok := ptr.(*time.Duration); ok {
 					var v time.Duration
@@ -154,7 +161,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 							panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 						}
 					}
-					DurationVar(fs, ptr.(*time.Duration), name, v, docstring)
+					DurationVar(fs, ptr.(*time.Duration), name, v, prefixType("int", docstring))
 				} else {
 					var v int64
 					if defaultValue != "" {
@@ -164,7 +171,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 							panic(fmt.Errorf("failed to parse %s as integer (%q): %w", name, v, err))
 						}
 					}
-					Int64Var(fs, ptr.(*int64), name, v, docstring)
+					Int64Var(fs, ptr.(*int64), name, v, prefixType("int", docstring))
 				}
 			case reflect.Uint:
 				var v uint64
@@ -175,7 +182,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				UintVar(fs, ptr.(*uint), name, uint(v), docstring)
+				UintVar(fs, ptr.(*uint), name, uint(v), prefixType("uint", docstring))
 			case reflect.Uint64:
 				var v uint64
 				if defaultValue != "" {
@@ -185,7 +192,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				Uint64Var(fs, ptr.(*uint64), name, v, docstring)
+				Uint64Var(fs, ptr.(*uint64), name, v, prefixType("uint", docstring))
 			case reflect.Float32:
 				var v float64
 				if defaultValue != "" {
@@ -195,7 +202,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				Float32Var(fs, ptr.(*float32), name, float32(v), docstring)
+				Float32Var(fs, ptr.(*float32), name, float32(v), prefixType("float", docstring))
 			case reflect.Float64:
 				var v float64
 				if defaultValue != "" {
@@ -205,7 +212,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 						panic(fmt.Errorf("failed to parse default value for %s: %w", name, err))
 					}
 				}
-				Float64Var(fs, ptr.(*float64), name, v, docstring)
+				Float64Var(fs, ptr.(*float64), name, v, prefixType("float", docstring))
 			case reflect.Struct:
 				if isSplat {
 					StructVar(ptr, fs)
