@@ -18,7 +18,7 @@ func FlagSetStruct(name string, errHandling flag.ErrorHandling, out any) *flag.F
 }
 
 func prefixType(typeName string, docstring string) string {
-	if strings.Count(docstring, "`") > 2 {
+	if strings.Count(docstring, "`") >= 2 {
 		return docstring
 	}
 	return "`" + typeName + "`" + docstring
