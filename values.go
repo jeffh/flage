@@ -90,16 +90,16 @@ func BoolVar(fs *flag.FlagSet, p *bool, name string, value bool, usage string) {
 }
 
 func parseInt[X constraints.Integer](s string) (X, error) {
-	v, err := strconv.ParseInt(s, 10, 64)
+	v, err := strconv.ParseInt(s, 0, 64)
 	return X(v), err
 }
-func formatInt[X constraints.Integer](v X) string { return strconv.FormatInt(int64(v), 10) }
+func formatInt[X constraints.Integer](v X) string { return strconv.FormatInt(int64(v), 0) }
 
 func parseUint[X constraints.Unsigned](s string) (X, error) {
-	v, err := strconv.ParseUint(s, 10, 64)
+	v, err := strconv.ParseUint(s, 0, 64)
 	return X(v), err
 }
-func formatUint[X constraints.Integer](v X) string { return strconv.FormatUint(uint64(v), 10) }
+func formatUint[X constraints.Integer](v X) string { return strconv.FormatUint(uint64(v), 0) }
 
 func IntVar(fs *flag.FlagSet, p *int, name string, value int, usage string) {
 	fs.Var(newVar(p, value, parseInt, formatInt, false), name, usage)
@@ -152,7 +152,7 @@ func textMarshal(m any, s string) string {
 			return string(txt)
 		}
 	}
-	return ""
+	return s
 }
 
 func (b *textMarshalVar) Set(s string) error { return b.ptr.UnmarshalText([]byte(s)) }
