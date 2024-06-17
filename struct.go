@@ -106,7 +106,7 @@ func StructVar(v any, fs *flag.FlagSet) {
 				docstring = parts[2]
 			}
 		}
-		numBase := 10
+		numBase := 0
 		if raw := strings.TrimSpace(f.Tag.Get("flage-base")); raw != "" {
 			v, err := strconv.ParseInt(raw, 10, 64)
 			if err != nil {

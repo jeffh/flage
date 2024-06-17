@@ -93,13 +93,13 @@ func parseInt[X constraints.Integer](s string) (X, error) {
 	v, err := strconv.ParseInt(s, 0, 64)
 	return X(v), err
 }
-func formatInt[X constraints.Integer](v X) string { return strconv.FormatInt(int64(v), 0) }
+func formatInt[X constraints.Integer](v X) string { return strconv.FormatInt(int64(v), 10) }
 
 func parseUint[X constraints.Unsigned](s string) (X, error) {
-	v, err := strconv.ParseUint(s, 0, 64)
+	v, err := strconv.ParseUint(s, 0, strconv.IntSize)
 	return X(v), err
 }
-func formatUint[X constraints.Integer](v X) string { return strconv.FormatUint(uint64(v), 0) }
+func formatUint[X constraints.Integer](v X) string { return strconv.FormatUint(uint64(v), 10) }
 
 func IntVar(fs *flag.FlagSet, p *int, name string, value int, usage string) {
 	fs.Var(newVar(p, value, parseInt, formatInt, false), name, usage)
@@ -152,7 +152,7 @@ func textMarshal(m any, s string) string {
 			return string(txt)
 		}
 	}
-	return s
+	return ""
 }
 
 func (b *textMarshalVar) Set(s string) error { return b.ptr.UnmarshalText([]byte(s)) }
@@ -171,8 +171,10 @@ func (b *textMarshalVar) Reset() {
 }
 
 func TextVar(fs *flag.FlagSet, p encoding.TextUnmarshaler, name string, value string, usage string) {
-	if err := p.UnmarshalText([]byte(value)); err != nil {
-		panic(fmt.Errorf("failed to set flag value %q: %w", name, err))
+	if value != "" {
+		if err := p.UnmarshalText([]byte(value)); err != nil {
+			panic(fmt.Errorf("failed to set flag value %q: %w", name, err))
+		}
 	}
 	fs.Var(&textMarshalVar{p, value}, name, usage)
 }
