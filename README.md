@@ -21,7 +21,7 @@ This package can use a struct for easy parsing using go's flag package. Supporte
 
  - types supported by the `flag` package
  - any type that supports the `flag.Value` interface
- - any type that supports `encoding.TextMarshal` and `encoding.TextUnmarshal` interfaces
+ - any type that supports `encoding.TextMarshaler` and `encoding.TextUnmarshaler` interfaces
 
 Example:
 
@@ -91,8 +91,8 @@ The following slices are supported:
 
  - `StringSlice` for slices of strings
  - `FloatSlice` for slices of float64
- - `IntSlice` for slices of int64
- - `UintSlice` for slices of uint64
+ - `Int64Slice` for slices of int64
+ - `Uint64Slice` for slices of uint64
 
 These slices also support calling `Reset` on them to clear those slices, which can be useful
 if you're reusing them in flagsets.
@@ -123,18 +123,18 @@ StructVar(&opt, nil)
 flag.Parse()
 
 if opt.Config != "" {
-    err := flage.ParseConfigFile(opt.Config)
+    args, err := flage.ReadConfigFile(opt.Config)
     if err != nil {
         // ...
     }
+    flag.CommandLine.Parse(args)
 }
-// opt will be populated
 ```
 
 The above code will allow `-config <file>` to point to a file that looks like:
 
 ```txt
-# this is a comment and is ignored, # must be at the start of the line (ignoring only whitesepace)
+# this is a comment and is ignored, # must be at the start of the line (ignoring only whitespace)
 -bool
 -str "str"
 -u 1 -u64 2
@@ -145,15 +145,3 @@ for `-config`) with a couple of differences:
 
  - `#` are single lined comments
  - Newlines are converted to spaces
- - Some template variables and functions are available a la go's text/template syntax
-
-
-This is templated the following template context is available:
-
- - `{{.configDir}}` points to the directory that holds the config file specified via `-config <file>`
- - `{{env "MY_ENV_VAR"}}` returns the value of reading the environment variable `MY_ENV_VAR`
- - `{{envOr "MY_ENV_VAR" "DEFAULT"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns `"DEFAULT"` if not present
- - `{{envOrError "MY_ENV_VAR" "my error message"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns an error with `"my error message"` included
-
-More may be added. You can define your own set by using
-`TemplateConfigRenderer`, which the config functions wrap.

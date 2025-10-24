@@ -24,7 +24,7 @@ func insertType(typeName string, docstring string) string {
 // StructVar performs like flag.Var(...) but using a struct. Can optionally be annotated using tags.
 // If fs is nil, then the global functions in the flag package are used instead.
 //
-// Tags use the "flag" key with the following values: "<flagName>,<defaultValue>,<description>"
+// Tags use the "flage" key with the following values: "<flagName>,<defaultValue>,<description>"
 // If <flagName> is empty, then the lowercase of the fieldname is used. Can be set to "-" to ignore.
 // Can be set to "*" to recursively parse the struct as top-level flags.
 // If <defaultValue> is empty, then the zero value is used.
@@ -49,8 +49,8 @@ func insertType(typeName string, docstring string) string {
 // Example:
 //
 //	type Flag struct {
-//	  Install bool `flag:"install,,enables installation"`
-//	  ConfigFile string `flag:"config,,optional config file to load"`
+//	  Install bool `flage:"install,,enables installation"`
+//	  ConfigFile string `flage:"config,,optional config file to load"`
 //	}
 //
 //	var f Flag

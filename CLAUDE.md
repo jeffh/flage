@@ -68,7 +68,7 @@ Simple config file format that converts to command-line arguments:
 Complex but powerful system for chaining multiple commands:
 
 - `FlagSetDefinition` defines a command with name, description, and output struct
-- `NewFlagSetsFromStruct()` creates commands from a struct where each field is a command struct
+- `NewFlagSetsAndDefsFromStruct()` creates commands from a struct where each field is a command struct
 - `flagSetIterator` is the core iteration mechanism that matches args to flagsets
 - `CommandIterator` provides high-level iteration with access to parsed flag structs
 - `MakeUsageWithSubcommands()` creates comprehensive help output
@@ -89,7 +89,7 @@ Hierarchical environment lookup system:
 
 ## Important Implementation Details
 
-1. **Tag Parsing**: The `flage` tag uses comma separation, but only splits on first 3 commas (allowing commas in docstrings)
+1. **Tag Parsing**: The `flage` tag uses comma separation, but only splits on first 2 commas (allowing commas in docstrings)
 
 2. **Reset Pattern**: When iterating subcommands, all flags in a flagset are reset via `VisitAll()` before parsing the next command instance (subcommands.go:309)
 
