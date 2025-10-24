@@ -60,6 +60,7 @@ func TestStructVarParsing(t *testing.T) {
 		U64  uint64
 		I    int
 		I64  int64
+		F32  float32
 		F64  float64
 		D    time.Duration
 	}
@@ -73,6 +74,7 @@ func TestStructVarParsing(t *testing.T) {
 		"-u64", "1024",
 		"-i", "-1",
 		"-i64", "-1024",
+		"-f32", "-2.5",
 		"-f64", "-3.5",
 		"-d", "10s",
 	})
@@ -87,6 +89,7 @@ func TestStructVarParsing(t *testing.T) {
 		U64:  1024,
 		I:    -1,
 		I64:  -1024,
+		F32:  -2.5,
 		F64:  -3.5,
 		D:    10 * time.Second,
 	}
@@ -204,7 +207,8 @@ func TestStructVarParsingWithDefaults(t *testing.T) {
 		U    uint          `flage:",2"`
 		U64  uint64        `flage:",1024"`
 		I    int           `flage:",-2"`
-		I64  int64         `flage:",-1024"`
+		I64  int64         `flage:",-6"`
+		F32  float32       `flage:",32.5"`
 		F64  float64       `flage:",-3.5"`
 		D    time.Duration `flage:",15s"`
 	}
@@ -222,7 +226,8 @@ func TestStructVarParsingWithDefaults(t *testing.T) {
 		U:    2,
 		U64:  1024,
 		I:    -2,
-		I64:  -1024,
+		I64:  -6,
+		F32:  32.5,
 		F64:  -3.5,
 		D:    15 * time.Second,
 	}
