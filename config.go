@@ -29,7 +29,6 @@ func fileToCmdlineArgs(s string) string {
 // This is a quick and easy way to provide file-based configuration, a la pip.
 //
 // Comments are lines that start with a '#' (and not in the middle).
-// If env is given to nil, it defaults to EnvSystem(nil).
 //
 // The configuration file format assumes:
 //
@@ -57,7 +56,6 @@ func ParseConfigFile(fileContents string) ([]string, error) {
 // If you have the contents of the file already, use ParseConfigFile instead.
 //
 // Comments are lines that start with a '#' (and not in the middle).
-// If env is given to nil, it defaults to EnvSystem(nil).
 //
 // The configuration file format assumes:
 //

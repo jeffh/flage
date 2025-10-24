@@ -107,7 +107,7 @@ func NewFlagSetsAndDefsFromStruct(v any, handling flag.ErrorHandling) *FlagSetsA
 		case reflect.Struct:
 			cmds = append(cmds, FlagSetDefinition{name, docstring, ptr})
 		default:
-			panic(fmt.Errorf("%s: unsupported field type for 'flage.NewFlagSetsFromStruct' parsing: %s", f.Name, f.Type.Kind().String()))
+			panic(fmt.Errorf("%s: unsupported field type for 'flage.NewFlagSetsAndDefsFromStruct' parsing: %s", f.Name, f.Type.Kind().String()))
 		}
 	}
 	return NewFlagSets(cmds, handling)
