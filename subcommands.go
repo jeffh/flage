@@ -325,7 +325,21 @@ func (it *flagSetIterator) Next() bool {
 // Err returns the error when Next() was called
 func (it *flagSetIterator) Err() error { return it.err }
 
-// CommandString converts a struct into a series of command line args
+// CommandString converts a struct into a series of command line args.
+// Only includes non-zero values (false for bool, 0 for numbers, empty string for strings, empty slices).
+//
+// Field names are lowercased and prefixed with '-' unless customized with the 'arg' tag.
+// The 'arg' tag format is: arg:"{FlagName}" where FlagName can be "-" to skip the field.
+//
+// Supported types: bool, string, int, int64, uint, uint64, time.Duration, and slices of these types.
+//
+// Example:
+//
+//	type Config struct {
+//	    Verbose bool   `arg:"v"`
+//	    Output  string `arg:"output"`
+//	    Count   int    `arg:"-"` // skipped
+//	}
 func CommandString(v any) []string {
 	if v == nil {
 		return nil

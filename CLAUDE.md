@@ -62,6 +62,7 @@ Simple config file format that converts to command-line arguments:
 - `ParseConfigFile(string)` for parsing file contents
 - `ReadConfigFile(string)` for reading from disk
 - Also provides `ParseEnvironFile()` and `ReadEnvironFile()` for KEY=VALUE format files
+- **Note**: Template support (e.g., `{{.configDir}}`, `{{env "VAR"}}`) is planned but not yet implemented
 
 ### 5. Subcommand Support (subcommands.go)
 
@@ -73,6 +74,8 @@ Complex but powerful system for chaining multiple commands:
 - `CommandIterator` provides high-level iteration with access to parsed flag structs
 - `MakeUsageWithSubcommands()` creates comprehensive help output
 - `CommandString()` converts a struct back into command-line args (useful for testing)
+  - Uses `arg` tag to customize flag names (format: `arg:"{FlagName}"`)
+  - Use `arg:"-"` to skip fields
 
 Key pattern: Commands are matched by name, parsed, then remaining args are passed to next iteration.
 

@@ -91,8 +91,8 @@ The following slices are supported:
 
  - `StringSlice` for slices of strings
  - `FloatSlice` for slices of float64
- - `IntSlice` for slices of int64
- - `UintSlice` for slices of uint64
+ - `Int64Slice` for slices of int64
+ - `Uint64Slice` for slices of uint64
 
 These slices also support calling `Reset` on them to clear those slices, which can be useful
 if you're reusing them in flagsets.
@@ -141,19 +141,10 @@ The above code will allow `-config <file>` to point to a file that looks like:
 ```
 
 This is the same as passing in arguments to the command line argument (except
-for `-config`) with a couple of differences:
+for `-config`). The configuration file format:
 
- - `#` are single lined comments
+ - Lines starting with `#` (ignoring leading whitespace) are treated as comments and ignored
  - Newlines are converted to spaces
- - Some template variables and functions are available a la go's text/template syntax
+ - The resulting text is parsed using shell-like syntax (via `github.com/google/shlex`)
 
-
-This is templated the following template context is available:
-
- - `{{.configDir}}` points to the directory that holds the config file specified via `-config <file>`
- - `{{env "MY_ENV_VAR"}}` returns the value of reading the environment variable `MY_ENV_VAR`
- - `{{envOr "MY_ENV_VAR" "DEFAULT"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns `"DEFAULT"` if not present
- - `{{envOrError "MY_ENV_VAR" "my error message"}}` returns the value of reading the environment variable `MY_ENV_VAR` or returns an error with `"my error message"` included
-
-More may be added. You can define your own set by using
-`TemplateConfigRenderer`, which the config functions wrap.
+**Note**: Template support (e.g., `{{.configDir}}`, `{{env "VAR"}}`) is planned but not yet implemented.
